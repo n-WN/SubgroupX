@@ -7,6 +7,9 @@
 > [!TIP]
 > **Star Milestone Goals**: 进化轨迹 —— GitHub Star 触及 500 / 1000 节点，开源核心将解锁深度能力进阶！
 
+> [!CAUTION]
+> **AI Disclosure**: This project and its documentation are primarily AI-generated. Some information, achievements, or technical details may be simulated or inaccurate.
+
 ---
 
 ## Abstract

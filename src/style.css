@@ -11,18 +11,24 @@
   --spacing-unit: 20px;
 }
 
-* {
+html,
+body {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-body {
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: var(--font-main);
   overflow-x: hidden;
+  /* Prevent horizontal scroll */
+  width: 100%;
   line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
 }
 
 html {
@@ -629,6 +635,7 @@ h3 {
     grid-column: span 1;
   }
 }
+
 /* --- Milestone Banner --- */
 .milestone-banner {
   background: var(--accent-magenta);
@@ -647,13 +654,51 @@ h3 {
 }
 
 @keyframes bannerPulse {
-  0%, 100% { opacity: 0.9; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 768px) {
   .milestone-banner {
-    font-size: 0.7rem;
-    padding: 6px 15px;
+    font-size: 0.6rem;
+    /* Smaller font for mobile */
+    padding: 8px 10px;
+    line-height: 1.4;
+  }
+
+  .geo-header {
+    height: auto;
+    min-height: 140px;
+    padding-top: 40px;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 20px;
+  }
+
+  /* Reset absolute positioning for mobile */
+  .header-icons {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-top: 10px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .logo-container {
+    margin-bottom: 10px;
+  }
+
+  /* Center the nav links if needed, or keep hidden/minimal */
+  .geo-nav {
+    display: none;
+    /* Hide desktop nav on mobile for now, or use hamburger if requested */
   }
 }

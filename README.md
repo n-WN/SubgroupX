@@ -4,6 +4,9 @@
 **Status:** [PENDING_LAUNCH]  
 **Target Date:** 2026-01-13 23:00 (UTC+8)
 
+> [!TIP]
+> **Star Milestone Goals**: 如果Star分别到达500star和1000star，开源部分会有能力增强！
+
 ---
 
 ## Abstract

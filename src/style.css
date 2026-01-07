@@ -629,3 +629,31 @@ h3 {
     grid-column: span 1;
   }
 }
+/* --- Milestone Banner --- */
+.milestone-banner {
+  background: var(--accent-magenta);
+  color: #fff;
+  text-align: center;
+  padding: 8px 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 2000;
+  text-transform: uppercase;
+  font-weight: 700;
+  box-shadow: 0 2px 15px rgba(255, 59, 149, 0.3);
+  animation: bannerPulse 4s infinite ease-in-out;
+}
+
+@keyframes bannerPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .milestone-banner {
+    font-size: 0.7rem;
+    padding: 6px 15px;
+  }
+}

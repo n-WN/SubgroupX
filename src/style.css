@@ -247,6 +247,51 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
   height: 24px;
 }
 
+/* --- Repo Pill --- */
+.repo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--grid-color);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-color);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.2s ease, color 0.2s ease,
+    background 0.2s ease;
+}
+
+.repo-pill:hover {
+  opacity: 1;
+  border-color: rgba(0, 240, 255, 0.6);
+  background: rgba(0, 240, 255, 0.06);
+  color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.repo-pill:focus-visible {
+  outline: 2px solid rgba(0, 240, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.repo-pill-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.95;
+  flex-shrink: 0;
+}
+
+.repo-pill-text {
+  opacity: 0.85;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* --- arXiv Pending Tooltip --- */
 .arxiv-pending {
   position: relative;
@@ -293,12 +338,16 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
   z-index: 2;
   text-align: center;
   width: 100%;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(18px, 2.8vh, 34px);
 }
 
 .status-indicator {
   font-family: var(--font-mono);
   color: var(--accent-cyan);
-  margin-bottom: 20px;
+  margin: 0;
   font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
@@ -316,7 +365,7 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
 .hero-title {
   font-size: clamp(3rem, 10vw, 8rem);
   line-height: 0.9;
-  margin-bottom: 60px;
+  margin: 0;
 }
 
 .hero-cta {
@@ -368,7 +417,7 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
 
 /* --- Countdown --- */
 .countdown-wrapper {
-  margin-top: 40px;
+  margin: 0;
   border-top: 1px solid var(--grid-color);
   border-bottom: 1px solid var(--grid-color);
   display: inline-block;
@@ -596,6 +645,29 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
   border-bottom-color: rgba(0, 240, 255, 0.7);
 }
 
+/* --- Collaboration Callout --- */
+.collab-callout {
+  width: min(980px, 100%);
+  margin: 70px auto 0;
+  padding: 26px 30px;
+  border: 1px solid var(--grid-color);
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 12px;
+}
+
+.collab-title {
+  color: var(--accent-yellow);
+  letter-spacing: 0.18em;
+  font-size: 0.85rem;
+}
+
+.collab-body {
+  margin: 0;
+  font-size: 1.05rem;
+  opacity: 0.8;
+}
+
 /* --- Awards Section --- */
 .awards-container {
   display: grid;
@@ -777,6 +849,23 @@ html[lang^="zh"] .lang-toggle-text[data-lang="zh"] {
 
   .lang-toggle {
     padding: 7px 9px;
+  }
+
+  .repo-pill-text {
+    display: none;
+  }
+
+  .repo-pill {
+    padding: 8px 10px;
+  }
+
+  .collab-callout {
+    margin-top: 50px;
+    padding: 22px 20px;
+  }
+
+  .collab-body {
+    font-size: 1rem;
   }
 
   .term-list li {

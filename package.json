@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "sync:countdown": "node scripts/sync-target-date.js"
+    "preview": "vite preview"
   },
   "devDependencies": {
     "vite": "^7.2.4"

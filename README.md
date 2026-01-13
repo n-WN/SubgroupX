@@ -2,7 +2,7 @@
 **Technical Report // Normal Subgroup**  
 **Version:** 1.0.0-PROTOTYPE  
 **Status:** [PENDING_LAUNCH]  
-**Target Date:** 2026-01-15 23:00 (UTC+8)
+**Target Date:** https://ai.cauchy.top/api/target-date
 
 > [!TIP]
 > **Star Milestone Goals**: 进化轨迹 —— GitHub Star 触及 500 / 1000 节点，开源核心将解锁深度能力进阶！
@@ -19,8 +19,8 @@ SubgroupX is a specialized AI Agent designed for high-fidelity cybersecurity ope
 > [!IMPORTANT]
 > **SubgroupX is scheduled for full deployment in:**
 > 
-> ![Countdown](countdown.svg)
-> *(Note: The display updates hourly via GitHub Actions.)*
+> ![Countdown](https://ai.cauchy.top/countdown.svg)
+> *(Note: The SVG is generated dynamically on Cloudflare Pages.)*
 
 ## 01 // Core Capabilities
 - **Tactical Autonomy**: Self-directed vulnerability assessment and exploit chain execution.

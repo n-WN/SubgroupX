@@ -1,10 +1,11 @@
 /**
  * SubgroupX Landing Page Logic
- * Target Date: 2026-01-15T23:00:00+08:00
+ * Target Date: from /api/target-date (fallback below)
  */
 
 // Target Date Configuration
-const TARGET_DATE = new Date('2026-01-15T23:00:00+08:00');
+const FALLBACK_TARGET_DATE = '2026-01-15T23:00:00+08:00';
+let TARGET_DATE = new Date(FALLBACK_TARGET_DATE);
 
 // DOM Elements
 const els = {
@@ -13,7 +14,46 @@ const els = {
   minutes: document.getElementById('minutes'),
   seconds: document.getElementById('seconds'),
   countdown: document.getElementById('countdown'),
+  countdownLabel: document.querySelector('.countdown-label'),
 };
+
+function updateCountdownLabel(targetDateString) {
+  const labelDate = targetDateString.split('T')[0];
+  if (els.countdownLabel) {
+    els.countdownLabel.textContent = `T-MINUS // TARGET ${labelDate}`;
+  }
+
+  const metaDescription = document.querySelector('meta[name="description"]');
+  if (metaDescription) {
+    metaDescription.setAttribute(
+      'content',
+      `SubgroupX Agent - CTF & Penetration Testing AI. Launching ${labelDate}.`
+    );
+  }
+}
+
+async function loadTargetDate() {
+  try {
+    const res = await fetch('/api/target-date', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`target-date fetch failed: ${res.status}`);
+
+    const data = await res.json();
+    if (!data || typeof data.targetDate !== 'string') {
+      throw new Error('target-date response missing targetDate');
+    }
+
+    const parsed = new Date(data.targetDate);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new Error(`invalid targetDate: ${data.targetDate}`);
+    }
+
+    TARGET_DATE = parsed;
+    updateCountdownLabel(data.targetDate);
+  } catch (err) {
+    console.warn('Using fallback target date:', err);
+    updateCountdownLabel(FALLBACK_TARGET_DATE);
+  }
+}
 
 function updateCountdown() {
   const now = new Date();
@@ -43,6 +83,7 @@ function init() {
   console.log('SubgroupX System Initialized');
   console.log('Target:', TARGET_DATE);
   
+  loadTargetDate();
   updateCountdown();
   setInterval(updateCountdown, 1000);
 

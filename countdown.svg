@@ -1,7 +1,7 @@
 <svg width="400" height="80" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#0a0a0a" rx="4"/>
-  <text x="50%" y="45" font-family="monospace" font-size="32" fill="#00ffff" text-anchor="middle" font-weight="bold">000D : 00H</text>
-  <text x="50%" y="70" font-family="monospace" font-size="12" fill="#ffffff" text-anchor="middle" opacity="0.5">T-MINUS // TARGET: 2026-01-13</text>
+  <text x="50%" y="45" font-family="monospace" font-size="32" fill="#00ffff" text-anchor="middle" font-weight="bold">002D : 00H</text>
+  <text x="50%" y="70" font-family="monospace" font-size="12" fill="#ffffff" text-anchor="middle" opacity="0.5">T-MINUS // TARGET: 2026-01-15</text>
   <rect x="10%" y="55" width="80%" height="2" fill="#333"/>
   <rect x="10%" y="55" width="100%" height="2" fill="#00ffff">
     <animate attributeName="width" from="0%" to="100%" dur="2s" fill="freeze" />

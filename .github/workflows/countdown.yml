@@ -2,49 +2,36 @@ name: Update Countdown
 
 on:
   schedule:
-    - cron: '0 * * * *' # Every hour
-  workflow_dispatch:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
   push:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   update-svg:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Generate Countdown SVG
-        run: |
-          # Target: 2026-01-13 23:00 Beijing (UTC+8) -> 2026-01-13 15:00 UTC
-          TARGET=$(date -d "2026-01-13 15:00:00" +%s)
-          NOW=$(date +%s)
-          DIFF=$((TARGET - NOW))
-          
-          if [ $DIFF -le 0 ]; then
-            TIME="SYSTEM_DEPLOYED"
-          else
-            DAYS=$((DIFF / 86400))
-            HOURS=$(( (DIFF % 86400) / 3600 ))
-            TIME=$(printf "%03dD : %02dH" $DAYS $HOURS)
-          fi
-          
-          cat <<EOF > countdown.svg
-          <svg width="400" height="80" xmlns="http://www.w3.org/2000/svg">
-            <rect width="100%" height="100%" fill="#0a0a0a" rx="4"/>
-            <text x="50%" y="45" font-family="monospace" font-size="32" fill="#00ffff" text-anchor="middle" font-weight="bold">$TIME</text>
-            <text x="50%" y="70" font-family="monospace" font-size="12" fill="#ffffff" text-anchor="middle" opacity="0.5">T-MINUS // TARGET: 2026-01-13</text>
-            <rect x="10%" y="55" width="80%" height="2" fill="#333"/>
-            <rect x="10%" y="55" width="$((100 - (DIFF * 100 / 604800)))%" height="2" fill="#00ffff">
-              <animate attributeName="width" from="0%" to="$((100 - (DIFF * 100 / 604800)))%" dur="2s" fill="freeze" />
-            </rect>
-          </svg>
-          EOF
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sync countdown assets
+        run: node scripts/sync-target-date.js
+
       - name: Commit and Push
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add countdown.svg
-          git commit -m "Update countdown SVG" || exit 0
-          git push
+          if git status --porcelain | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md countdown.svg index.html src/main.js
+            git commit -m "Update countdown assets"
+            git push
+          fi

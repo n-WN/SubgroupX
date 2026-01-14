@@ -1062,3 +1062,51 @@ html[lang^="zh"] .lang-toggle::after {
     /* Hide desktop nav on mobile for now, or use hamburger if requested */
   }
 }
+
+@media (max-width: 420px) {
+  #app {
+    margin: 12px;
+  }
+
+  .hero-section {
+    padding: 4vh 6px;
+  }
+
+  .status-indicator {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: 10vw;
+    letter-spacing: -0.03em;
+  }
+
+  .countdown-wrapper {
+    width: min(520px, 100%);
+    padding: 22px 16px;
+  }
+
+  .countdown-label {
+    font-size: 0.72rem;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .countdown-display {
+    flex-wrap: wrap;
+    gap: 12px 22px;
+  }
+
+  .separator {
+    display: none;
+  }
+
+  .time-block span:first-child {
+    font-size: clamp(1.8rem, 9vw, 3rem);
+  }
+}

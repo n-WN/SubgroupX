@@ -597,7 +597,7 @@ html[lang^="zh"] .lang-toggle::after {
 
 .info-actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .info-card {
@@ -960,6 +960,10 @@ html[lang^="zh"] .lang-toggle::after {
 
   .waitlist-input {
     min-width: 100%;
+  }
+
+  .info-actions {
+    justify-content: flex-start;
   }
 
   .term-list li {

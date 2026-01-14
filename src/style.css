@@ -598,6 +598,7 @@ html[lang^="zh"] .lang-toggle::after {
 .info-actions {
   display: flex;
   justify-content: flex-end;
+  padding: 0 28px;
 }
 
 .info-card {

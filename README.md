@@ -1,5 +1,7 @@
 # SubgroupX: Geometric Intelligence in Offensive Security
 
+[![Site](https://img.shields.io/badge/site-ai.cauchy.top-0a0a0a.svg)](https://ai.cauchy.top) [![arXiv](https://img.shields.io/badge/arXiv-2601.09129-b31b1b.svg)](https://arxiv.org/abs/2601.09129)
+
 **Technical Report // Normal Subgroup**  
 **Version:** 1.0.0-PROTOTYPE  
 **Status:** [PENDING_LAUNCH]  

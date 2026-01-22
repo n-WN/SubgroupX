@@ -3,7 +3,7 @@
  * Target Date: from /api/target-date (fallback below)
  */
 
-const FALLBACK_TARGET_DATE = '2026-01-17T11:00:00+08:00';
+const FALLBACK_TARGET_DATE = '2026-01-23T23:00:00+08:00';
 
 const TRANSLATIONS = {
   en: {

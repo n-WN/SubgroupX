@@ -1,7 +1,7 @@
 function getTargetDateString(env) {
   const raw = env?.TARGET_DATE;
   if (typeof raw === 'string' && raw.trim()) return raw.trim();
-  return '2026-01-23T23:00:00+08:00';
+  return '2026-01-24T17:00:00+08:00';
 }
 
 function parseDateOrNull(value) {
@@ -33,7 +33,7 @@ export async function onRequest({ env }) {
   const parsed = parseDateOrNull(targetDate);
 
   if (!parsed) {
-    const fallback = '2026-01-23T23:00:00+08:00';
+    const fallback = '2026-01-24T17:00:00+08:00';
     const parts = parseTargetDateParts(fallback);
     return Response.json(
       {

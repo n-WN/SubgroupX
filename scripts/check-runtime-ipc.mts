@@ -73,6 +73,19 @@ try {
     runtimeClient.disposeUserRuntimes(lu.id);
   }
 
+  const su = await signup(`ipc-skill-${process.pid}@gmail.com`, "password123");
+  await assert.rejects(
+    ipc.createSession(su, {
+      provider: MOCK_PROVIDER,
+      model: MOCK_MODEL_ID,
+      mode: "sk_missing",
+      sandboxMode: "workspace-write",
+      approvalPolicy: "on-request",
+    }),
+    (e: unknown) => (e as { code?: unknown })?.code === "invalid_skill",
+    "InvalidSkillError code must survive the socket so the route maps it to unknown skill",
+  );
+
   await assert.rejects(
     rawRpc(sock, "getRuntime", [uid, "s_none"]),
     /op not allowed/,
@@ -84,7 +97,9 @@ try {
   assert.equal(typeof hello.draining, "boolean", "hello.draining missing");
   assert.equal(typeof hello.ts, "number", "hello.ts missing");
 
-  console.log("OK runtime-ipc: bounded ops round-trip + whitelist + hello over unix socket");
+  await checkNonStringCodeSurvives();
+
+  console.log("OK runtime-ipc: bounded ops round-trip + error code + non-string code drop + whitelist + hello over unix socket");
 } finally {
   host.close();
   try {
@@ -123,4 +138,38 @@ function rawGet(socketPath: string, p: string): Promise<Record<string, unknown>>
     req.on("error", reject);
     req.end();
   });
+}
+
+// A bounded op whose error `code` is non-JSON-serializable (bigint) must not crash
+// the host: the code is dropped, the message still round-trips, and the host lives on.
+async function checkNonStringCodeSurvives(): Promise<void> {
+  const stub = {
+    getSessionInfo() {
+      throw Object.assign(new Error("boom"), { code: 1n });
+    },
+    listSessions: () => [],
+  } as unknown as typeof runtimeClient;
+  const badSock = path.join(os.tmpdir(), `oiia-rt-ipc-badcode-${process.pid}.sock`);
+  const badHost = createRuntimeHost(stub, badSock);
+  await new Promise<void>((r) => badHost.once("listening", () => r()));
+  try {
+    const ipc = makeRuntimeHttpClient(badSock);
+    await assert.rejects(
+      ipc.getSessionInfo("u", "s"),
+      (e: unknown) =>
+        e instanceof Error && e.message === "boom" && (e as { code?: unknown }).code === undefined,
+      "non-string code must reject with the message and drop code, not crash on JSON.stringify",
+    );
+    assert.deepEqual(
+      await ipc.listSessions("u"),
+      [],
+      "host survives a non-serializable code: a subsequent bounded call still succeeds",
+    );
+  } finally {
+    badHost.close();
+    try {
+      fs.unlinkSync(badSock);
+    } catch {
+    }
+  }
 }

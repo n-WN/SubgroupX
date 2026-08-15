@@ -380,6 +380,62 @@ export const connectorDao = {
   },
 };
 
+export interface SkillRow {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string;
+  icon: string;
+  prompt: string;
+  created_at: number;
+}
+
+export interface SkillSummaryRow {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  created_at: number;
+}
+
+export const skillDao = {
+  create(row: SkillRow): void {
+    db.prepare(
+      `INSERT INTO skills (id, user_id, name, description, icon, prompt, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(row.id, row.user_id, row.name, row.description, row.icon, row.prompt, row.created_at);
+  },
+  listSummariesForUser(userId: string): SkillSummaryRow[] {
+    return db
+      .prepare("SELECT id, name, description, icon, created_at FROM skills WHERE user_id = ? ORDER BY created_at DESC")
+      .all(userId) as unknown as SkillSummaryRow[];
+  },
+  byId(userId: string, id: string): SkillRow | undefined {
+    return db.prepare("SELECT * FROM skills WHERE id = ? AND user_id = ?").get(id, userId) as SkillRow | undefined;
+  },
+  countForUser(userId: string): number {
+    const row = db.prepare("SELECT COUNT(*) AS n FROM skills WHERE user_id = ?").get(userId) as { n: number };
+    return row.n;
+  },
+  update(
+    userId: string,
+    id: string,
+    fields: { name: string; description: string; icon: string; prompt: string },
+  ): void {
+    db.prepare("UPDATE skills SET name = ?, description = ?, icon = ?, prompt = ? WHERE id = ? AND user_id = ?").run(
+      fields.name,
+      fields.description,
+      fields.icon,
+      fields.prompt,
+      id,
+      userId,
+    );
+  },
+  delete(userId: string, id: string): void {
+    db.prepare("DELETE FROM skills WHERE id = ? AND user_id = ?").run(id, userId);
+  },
+};
+
 export interface ConnectorPairingRow {
   id: string;
   user_id: string;

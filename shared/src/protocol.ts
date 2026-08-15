@@ -40,7 +40,9 @@ export interface ConnectorTelemetry {
   cpuKind: "interval" | "load";
   processSource: "native" | "compat" | "unavailable";
 }
-export type SessionMode = "coding" | "pentest" | "exploit" | "bold";
+export type BuiltinSessionMode = "coding" | "bold" | "pentest" | "exploit";
+export type UserSkillId = `skill_${string}`;
+export type SessionMode = BuiltinSessionMode | UserSkillId;
 export type ApprovalPolicy = "never" | "on-request" | "untrusted";
 export type SessionStatus = "initializing" | "idle" | "running" | "error" | "closed";
 
@@ -110,6 +112,25 @@ export interface ProviderKeyInfo {
   updatedAt: number;
 }
 
+export interface SkillSummary {
+  id: UserSkillId;
+  name: string;
+  description: string;
+  icon: string;
+  createdAt: number;
+}
+export interface SkillDetail extends SkillSummary {
+  prompt: string;
+}
+
+// Single source of truth for the icon keys a user skill may carry. Server validates
+// stored icons against this list; the web dashboard maps each key to a Lucide glyph.
+export const SKILL_ICON_KEYS = [
+  "code-2", "zap", "shield-half", "bug", "sparkles", "wrench",
+  "terminal", "book-open", "flask-conical", "bot", "cpu", "search",
+] as const;
+export type SkillIconKey = typeof SKILL_ICON_KEYS[number];
+
 export interface ModelInfo {
   provider: string;
   id: string;
@@ -146,7 +167,7 @@ export interface SessionInfo {
   sandboxKind: SandboxKind;
   sandboxTargetId?: string | null;
   targetName?: string | null;
-  mode: SessionMode;
+  mode: string;
   approvalPolicy: ApprovalPolicy;
   status: SessionStatus;
   thinkingLevel: ThinkingLevel;

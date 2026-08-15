@@ -3,6 +3,8 @@ import type {
   ModelInfo,
   ProviderKeyInfo,
   SessionInfo,
+  SkillSummary,
+  SkillDetail,
   TimelineItem,
   FileEntry,
   WorkspaceDiff,
@@ -321,6 +323,14 @@ export const api = {
     req<{ automation: AutomationInfo }>("PATCH", `/automations/${id}`, { enabled }),
   deleteAutomation: (id: string) => req<{ ok: boolean }>("DELETE", `/automations/${id}`),
   runAutomation: (id: string) => req<{ ok: boolean }>("POST", `/automations/${id}/run-now`),
+
+  skills: () => req<{ skills: SkillSummary[] }>("GET", "/skills"),
+  skill: (id: string) => req<{ skill: SkillDetail }>("GET", `/skills/${id}`),
+  createSkill: (body: { name: string; description?: string; icon?: string; prompt: string }) =>
+    req<{ skill: SkillDetail }>("POST", "/skills", body),
+  updateSkill: (id: string, patch: { name?: string; description?: string; icon?: string; prompt?: string }) =>
+    req<{ skill: SkillDetail }>("PATCH", `/skills/${id}`, patch),
+  deleteSkill: (id: string) => req<{ ok: boolean }>("DELETE", `/skills/${id}`),
 
   sessions: () => req<{ sessions: SessionInfo[] }>("GET", "/sessions"),
   createSession: (input: {

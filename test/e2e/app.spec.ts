@@ -846,7 +846,9 @@ test("new session blueprint: crisp overlay, mode cards, and one coherent selecti
   const modal = page.getByTestId("new-session-modal");
   await expect(modal).toBeVisible();
   await expect(page.getByTestId("ns-mode-cards")).toBeVisible();
-  await expect(page.locator('[data-testid^="ns-mode-card-"]')).toHaveCount(4);
+  for (const m of ["coding", "bold", "pentest", "exploit"]) {
+    await expect(page.getByTestId(`ns-mode-card-${m}`)).toBeVisible();
+  }
   await expect(page.getByTestId("ns-mode-card-coding")).toBeChecked();
 
   const overlayFilter = await page.getByTestId("new-session-overlay").evaluate((node) => {

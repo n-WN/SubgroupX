@@ -915,6 +915,19 @@ CREATE TABLE IF NOT EXISTS connectors (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS skills (
+  id          TEXT PRIMARY KEY CHECK (id GLOB 'skill_*'),
+  user_id     TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  icon        TEXT NOT NULL DEFAULT '',
+  prompt      TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_skills_user_created ON skills(user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS connector_pairings (
   id             TEXT PRIMARY KEY,
   user_id        TEXT NOT NULL,
@@ -1893,6 +1906,7 @@ for (const [col, def] of [
   ["sandbox_id", "TEXT"],
   ["sandbox_target_id", "TEXT"],
   ["mode", "TEXT NOT NULL DEFAULT 'coding'"],
+  ["skill_prompt", "TEXT"],
   ["thinking_level", "TEXT NOT NULL DEFAULT 'medium'"],
   ["e2b_snapshot_id", "TEXT"],
   ["connector_unconfined", "INTEGER"],

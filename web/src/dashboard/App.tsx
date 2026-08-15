@@ -33,7 +33,7 @@ import { CommandPalette, type Command } from './shell/CommandPalette';
 import { MessageCircle, Search as SearchIcon, SquareTerminal, Box as BoxIcon, LayoutGrid, Settings as SettingsIcon, Plus as PlusIcon, PanelLeft, PanelRight, Maximize2, Link2, Hash, Languages, LogOut as LogOutIcon, Grid2x2, Waypoints } from 'lucide-react';
 import { useBackgroundTasks } from '../platform/background-tasks.ts';
 import { TOAST_EVENT, showToast } from '../platform/toast';
-import type { ExecutorAvailability, SandboxKind, SessionInfo, SessionMode, SessionStatus, TimelineItem, UserInfo, ModelInfo } from '@shared/protocol';
+import type { ExecutorAvailability, SandboxKind, SessionInfo, SessionMode, SessionStatus, SkillSummary, TimelineItem, UserInfo, ModelInfo } from '@shared/protocol';
 import type { ViewType } from './types';
 import { navigate, usePathname } from '../platform/router';
 import { VIEW_PATH, parseAppPath, isKnownAppPath } from './nav';
@@ -162,6 +162,7 @@ export default function App({ user, onSuspended }: { user?: UserInfo | null; onS
     if (sessionId) setShareSessionId(sessionId);
   }, []);
   const [newSessionMode, setNewSessionMode] = useState<SessionMode | null>(null);
+  const [newSessionSkill, setNewSessionSkill] = useState<SkillSummary | null>(null);
   const [toast, setToast] = useState<{ msg: string; n: number } | null>(null);
   const wsRef = useRef<WsClient | null>(null);
 
@@ -633,7 +634,7 @@ export default function App({ user, onSuspended }: { user?: UserInfo | null; onS
               <SkillsView
                 isLeftSidebarOpen={isLeftSidebarOpen}
                 onOpenLeftSidebar={() => setIsLeftSidebarOpen(true)}
-                onLaunch={(mode) => { setNewSessionMode(mode); setShowNewSession(true); }}
+                onLaunch={(mode, skill) => { setNewSessionMode(mode); setNewSessionSkill(skill ?? null); setShowNewSession(true); }}
               />
             )}
 
@@ -736,11 +737,13 @@ export default function App({ user, onSuspended }: { user?: UserInfo | null; onS
       {showNewSession && (
         <NewSession
           initialMode={newSessionMode ?? undefined}
+          initialSkill={newSessionSkill ?? undefined}
           isAdmin={user?.isAdmin}
           onNavigateToConnectors={() => { openView('plugins'); closeDrawersOnMobile(); }}
-          onClose={() => { setShowNewSession(false); setNewSessionMode(null); }}
+          onClose={() => { setShowNewSession(false); setNewSessionMode(null); setNewSessionSkill(null); }}
           onCreated={(session) => {
             setNewSessionMode(null);
+            setNewSessionSkill(null);
             setSessions((cur) => (cur.some((s) => s.id === session.id) ? cur : [session, ...cur]));
             openSession(session);
           }}

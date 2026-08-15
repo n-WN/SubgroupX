@@ -121,6 +121,8 @@
     "check:session-switch": "tsx scripts/check-session-switch-performance.mts",
     "check:set-sandbox-owner": "tsx scripts/check-set-sandbox-owner.mts",
     "check:sidebar-recovery": "tsx scripts/check-sidebar-recovery.mts",
+    "check:skill-api": "tsx scripts/check-skill-api.mts",
+    "check:skill-lifecycle": "tsx scripts/check-skill-lifecycle.mts",
     "check:ssh-guard": "tsx scripts/check-ssh-guard.mts",
     "check:ssh-passkey": "AGENT_WEB_SECRET=test-secret-passkey AGENT_WEB_KEY_SECRET=test-secret-passkey AGENT_WEB_DATA_DIR=/tmp/oiia-passkey-check tsx scripts/check-ssh-passkey.mts",
     "check:ssh-sandbox": "AGENT_WEB_SSH_ALLOW_INTERNAL=1 tsx scripts/check-ssh-sandbox.mts",

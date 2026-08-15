@@ -1,19 +1,17 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
-  Bug,
   Check,
   Cloud,
-  Code2,
   Cpu,
-  Rocket,
   ChevronRight,
   Shield,
-  ShieldCheck,
 } from "lucide-react";
 import { api, type ConnectorInfo, type SshTargetInfo } from "../platform/api.ts";
 import { modelExecutorAvailability } from "../platform/executors.ts";
 import { useT } from "../i18n";
+import { userIcon, type LucideIcon } from "../dashboard/features/skills/skill-icons.ts";
+import { BUILTIN_PERSONAS } from "../dashboard/features/skills/builtins.ts";
 import { StatusDot } from "../ui/StatusDot.tsx";
 import {
   Modal,
@@ -34,15 +32,24 @@ import {
   type SandboxMode,
   type SandboxKind,
   type SessionMode,
+  type SkillSummary,
   type ApprovalPolicy,
   type ExecutorAvailability,
 } from "@shared/protocol";
+
+type ModeOption = {
+  value: SessionMode;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+};
 
 type NewSessionState = {
   models: ModelInfo[];
   executors: ExecutorAvailability;
   sshTargets: SshTargetInfo[];
   connectors: ConnectorInfo[];
+  userSkills: SkillSummary[];
   title: string;
   modelKey: string;
   sandboxMode: SandboxMode;
@@ -60,6 +67,7 @@ type NewSessionAction =
   | { type: "modelsLoaded"; models: ModelInfo[]; executors: ExecutorAvailability; isAdmin: boolean }
   | { type: "sshLoaded"; sshTargets: SshTargetInfo[]; isAdmin: boolean }
   | { type: "connectorsLoaded"; connectors: ConnectorInfo[]; isAdmin: boolean }
+  | { type: "skillsLoaded"; userSkills: SkillSummary[] }
   | { type: "setTitle"; value: string }
   | { type: "setModelKey"; value: string }
   | { type: "setSandboxMode"; value: SandboxMode }
@@ -121,9 +129,11 @@ function SessionModeCard({
   description: string;
   onSelect: () => void;
 }) {
+  const optionTestId = `ns-mode-option-${value}`;
+  const cardTestId = `ns-mode-card-${value}`;
   return (
     <label
-      data-testid={`ns-mode-option-${value}`}
+      data-testid={optionTestId}
       className={`group relative min-h-[108px] cursor-pointer rounded-[14px] border p-3.5 text-left outline-none transition-[border-color,background-color,box-shadow,transform] focus-within:ring-2 focus-within:ring-[#C77D2E]/25 motion-safe:hover:-translate-y-px ${
         active
           ? "border-[#CDBB9D] bg-[#F3EEE3] shadow-[inset_0_0_0_1px_rgba(199,125,46,0.08)] dark:border-[#66583F] dark:bg-[#2A2821]"
@@ -137,7 +147,7 @@ function SessionModeCard({
         checked={active}
         onChange={onSelect}
         className="sr-only"
-        data-testid={`ns-mode-card-${value}`}
+        data-testid={cardTestId}
       />
       <span className="flex items-start justify-between gap-3">
         <span
@@ -244,6 +254,8 @@ function newSessionReducer(state: NewSessionState, action: NewSessionAction): Ne
           ? state.sandboxKind
           : defaultRuntimeForMode(state.mode, action.isAdmin, state.executors, action.connectors, state.sshTargets),
       };
+    case "skillsLoaded":
+      return { ...state, userSkills: action.userSkills };
     case "isAdminResolved":
       return state.mode === "bold" && !state.runtimeTouched
         ? { ...state, sandboxKind: defaultRuntimeForMode("bold", action.isAdmin, state.executors, state.connectors, state.sshTargets) }
@@ -285,12 +297,14 @@ export function NewSession({
   onCreated,
   onClose,
   initialMode,
+  initialSkill,
   isAdmin = false,
   onNavigateToConnectors,
 }: {
   onCreated: (s: SessionInfo) => void;
   onClose: () => void;
   initialMode?: SessionMode;
+  initialSkill?: SkillSummary;
   isAdmin?: boolean;
   onNavigateToConnectors?: () => void;
 }) {
@@ -300,6 +314,7 @@ export function NewSession({
     executors: INITIAL_EXECUTORS,
     sshTargets: [],
     connectors: [],
+    userSkills: initialSkill ? [initialSkill] : [],
     title: "",
     modelKey: "mock::mock-coder",
     sandboxMode: "danger-full-access" as SandboxMode,
@@ -317,6 +332,7 @@ export function NewSession({
     executors,
     sshTargets,
     connectors,
+    userSkills,
     title,
     modelKey,
     sandboxMode,
@@ -341,6 +357,9 @@ export function NewSession({
     api.connectors().then((r) => {
       const online = r.connectors.filter((connector) => connector.online);
       dispatch({ type: "connectorsLoaded", connectors: online, isAdmin });
+    }).catch(() => {});
+    api.skills().then((r) => {
+      dispatch({ type: "skillsLoaded", userSkills: r.skills });
     }).catch(() => {});
   }, []);
 
@@ -423,37 +442,34 @@ export function NewSession({
   const optionsLoaded = models.length > 0;
   const configBlocked = optionsLoaded && (boldNeedsSetup || !runtimeAvailable);
   const selectedModel = models.find((model) => `${model.provider}::${model.id}` === modelKey);
-  const modeOptions: Array<{
-    value: SessionMode;
-    icon: ReactNode;
-    label: string;
-    description: string;
-  }> = [
-    {
-      value: "coding",
-      icon: <Code2 className="size-4" />,
-      label: t("ns.modeCoding"),
-      description: t("ns.modeCodingHelp"),
-    },
-    {
-      value: "bold",
-      icon: <Rocket className="size-4" />,
-      label: t("ns.modeBold"),
-      description: t("ns.modeBoldCardHelp"),
-    },
-    {
-      value: "pentest",
-      icon: <ShieldCheck className="size-4" />,
-      label: t("ns.modePentest"),
-      description: t("ns.modePentestCardHelp"),
-    },
-    {
-      value: "exploit",
-      icon: <Bug className="size-4" />,
-      label: t("ns.modeExploit"),
-      description: t("ns.modeExploitCardHelp"),
-    },
-  ];
+  const builtinModeOptions: ModeOption[] = BUILTIN_PERSONAS.map((persona) => ({
+    value: persona.id,
+    icon: persona.modeIcon,
+    label: t(persona.modeLabelKey),
+    description: t(persona.modeDescKey),
+  }));
+  // User personas render from raw skill data (never via t(), whose dynamic keys resolve blank).
+  const userModeOptions: ModeOption[] = userSkills.map((skill) => ({
+    value: skill.id,
+    icon: userIcon(skill.icon),
+    label: skill.name,
+    description: skill.description,
+  }));
+  const modeOptions: ModeOption[] = [...builtinModeOptions, ...userModeOptions];
+  const renderModeCard = (option: ModeOption) => {
+    const Icon = option.icon;
+    return (
+      <SessionModeCard
+        key={option.value}
+        value={option.value}
+        icon={<Icon className="size-4" />}
+        label={option.label}
+        description={option.description}
+        active={mode === option.value}
+        onSelect={() => dispatch({ type: "setMode", value: option.value, isAdmin })}
+      />
+    );
+  };
   const sandboxSummary =
     sandboxMode === "read-only" ? t("ns.sumReadOnly")
     : sandboxMode === "danger-full-access" ? t("ns.sumFullAccess")
@@ -519,15 +535,18 @@ export function NewSession({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="ns-mode-cards">
-                {modeOptions.map((option) => (
-                  <SessionModeCard
-                    key={option.value}
-                    {...option}
-                    active={mode === option.value}
-                    onSelect={() => dispatch({ type: "setMode", value: option.value, isAdmin })}
-                  />
-                ))}
+                {builtinModeOptions.map((option) => renderModeCard(option))}
               </div>
+              {userModeOptions.length > 0 && (
+                <div className="mt-4" data-testid="ns-mode-custom">
+                  <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9A7954] dark:text-[#BE8A52]">
+                    {t("ns.modeCustomSection")}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="ns-mode-custom-cards">
+                    {userModeOptions.map((option) => renderModeCard(option))}
+                  </div>
+                </div>
+              )}
             </fieldset>
 
             {(mode === "pentest" || mode === "exploit") && executors.e2b.available && (

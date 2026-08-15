@@ -154,14 +154,22 @@ async function checkNonStringCodeSurvives(): Promise<void> {
   await new Promise<void>((r) => badHost.once("listening", () => r()));
   try {
     const ipc = makeRuntimeHttpClient(badSock);
+    // bound each call so a hanging host fails the check instead of blocking CI forever
+    const withTimeout = <T>(p: Promise<T>, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`timeout: ${label} did not settle`)), 5000).unref(),
+        ),
+      ]);
     await assert.rejects(
-      ipc.getSessionInfo("u", "s"),
+      withTimeout(ipc.getSessionInfo("u", "s"), "getSessionInfo"),
       (e: unknown) =>
         e instanceof Error && e.message === "boom" && (e as { code?: unknown }).code === undefined,
       "non-string code must reject with the message and drop code, not crash on JSON.stringify",
     );
     assert.deepEqual(
-      await ipc.listSessions("u"),
+      await withTimeout(ipc.listSessions("u"), "listSessions"),
       [],
       "host survives a non-serializable code: a subsequent bounded call still succeeds",
     );

@@ -159,7 +159,9 @@ seedSkill(RACE_ID, "Race", RACE_PROMPT);
 // miss and silently freeze the coding prompt. Delete on the read so any re-query
 // would miss; the create must still freeze the resolved custom prompt.
 const realById = skillDao.byId;
+let raceByIdCalls = 0;
 skillDao.byId = (uid, id) => {
+  raceByIdCalls++;
   const row = realById(uid, id);
   if (id === RACE_ID) skillDao.delete(user.id, RACE_ID);
   return row;
@@ -171,6 +173,9 @@ try {
   skillDao.byId = realById;
 }
 
+check("the delete-after-read stub was actually exercised", () =>
+  assert.ok(raceByIdCalls > 0, "skillDao.byId must run through the patched reference, or the race is untested"),
+);
 check("createSession survived the delete-after-read", () =>
   assert.ok(raced, "the create must not throw when the skill is deleted after its read"),
 );
@@ -186,6 +191,7 @@ check("the persisted snapshot is the wrapped CUSTOM prompt, never coding", () =>
 // and persistence path (persona from the actor row, not a re-resolve of its mode)
 // while isolating reservation-claim mechanics. The reconciler/claim path itself is
 // covered by check:agent-team.
+const realClaim = teamDao.isActiveMemberProvisionClaim;
 teamDao.isActiveMemberProvisionClaim = () => true;
 const teamMemberFrom = (actorSessionId: string, title: string) =>
   sessionManager.createTeamMemberSession(user.id, actorSessionId, title, {
@@ -290,6 +296,8 @@ check("a snapshot-bearing actor with an unresolvable mode still provisions a mem
 check("the member inherits the actor's authoritative snapshot verbatim", () =>
   assert.equal(snapshotOf(legacyMember!.id), LEGACY_SNAPSHOT),
 );
+
+teamDao.isActiveMemberProvisionClaim = realClaim;
 
 console.log("\n── Case 12: restore fails loudly on an unresolvable stored mode ──");
 

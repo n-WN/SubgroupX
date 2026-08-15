@@ -160,5 +160,8 @@ test("custom skill edit: an out-of-order detail response never clobbers the last
   );
   releaseAlpha();
   await alphaResponse;
+  // re-assert after a beat: a stale response would clobber the field a tick later
+  await expect(page.getByTestId("skill-description")).toHaveValue("Beta description");
+  await page.waitForTimeout(200);
   await expect(page.getByTestId("skill-description")).toHaveValue("Beta description");
 });

@@ -159,7 +159,7 @@ function SkillForm({
       )}
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className={quietButtonClass}>
+        <button type="button" onClick={onCancel} disabled={busy} className={quietButtonClass}>
           {t("common.cancel")}
         </button>
         <button data-testid="skill-form-submit" type="submit" disabled={!canSubmit} className={primaryButtonClass}>
@@ -370,6 +370,7 @@ export function SkillsView({
   async function remove(skill: SkillSummary) {
     if (deletingId) return;
     if (!confirm(t("skills.deleteConfirm"))) return;
+    editReq.current++; // invalidate an in-flight openEdit so it cannot reopen the deleted skill
     setDeletingId(skill.id);
     setDeleteError(false);
     try {

@@ -38,7 +38,7 @@ const bob = makeUser("u_bob");
 const carol = makeUser("u_carol");
 
 const app = express();
-app.use(express.json());
+// no outer express.json(): createApiRouter mounts its own at the 20mb production limit
 app.use("/api", createApiRouter());
 const server = app.listen(0);
 await new Promise<void>((r) => server.once("listening", () => r()));
@@ -201,7 +201,7 @@ await check("POST /sessions with an unknown explicit skill id is 400 unknown ski
   assert.equal(res.body.error, "unknown skill");
 });
 
-console.log("\n── Explicit non-string mode is rejected (missing→coding, invalid→400) ──");
+console.log("\n── Explicit non-string mode is rejected with 400 ──");
 const badModes: unknown[] = [42, { evil: true }, ["x"]];
 for (const bad of badModes) {
   await check(`POST /sessions with a non-string mode (${JSON.stringify(bad)}) is 400`, async () => {
@@ -222,6 +222,14 @@ await check("POST /skills with a non-string icon is 400", async () => {
   });
   assert.equal(res.status, 400);
   assert.equal(res.body.error, "icon must be a string");
+});
+await check("POST /skills with an unsupported icon is 400 (not silently coerced)", async () => {
+  const res = await call("POST", "/api/skills", {
+    token: alice.token,
+    body: { name: "IconUnknown", prompt: "ok", icon: "not-a-real-icon" },
+  });
+  assert.equal(res.status, 400);
+  assert.equal(res.body.error, "unsupported icon");
 });
 
 server.close();

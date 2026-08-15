@@ -102,7 +102,7 @@ export function createRuntimeHost(client: RuntimeClient, socketPath: string): ht
         sendJson(res, 200, { ok: true, result: result ?? null });
       } catch (e) {
         const code = errorCode(e);
-        sendJson(res, 200, { ok: false, error: errorMessage(e), ...(code ? { code } : {}) });
+        sendJson(res, 200, { ok: false, error: errorMessage(e), ...(code !== undefined ? { code } : {}) });
       }
     });
   });

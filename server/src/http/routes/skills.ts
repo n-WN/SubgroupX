@@ -71,8 +71,10 @@ function validateSkillBody(
     icon = existing ? existing.icon : "sparkles";
   } else if (typeof body.icon !== "string") {
     return { ok: false, error: "icon must be a string" };
+  } else if (!(SKILL_ICON_KEYS as readonly string[]).includes(body.icon)) {
+    return { ok: false, error: "unsupported icon" };
   } else {
-    icon = (SKILL_ICON_KEYS as readonly string[]).includes(body.icon) ? body.icon : "sparkles";
+    icon = body.icon;
   }
 
   return { ok: true, fields: { name, description, icon, prompt } };

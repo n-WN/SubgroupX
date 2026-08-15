@@ -1,5 +1,5 @@
 import http from "node:http";
-import { errorMessage } from "../foundation/errors.ts";
+import { errorMessage, errorCode } from "../foundation/errors.ts";
 import fs from "node:fs";
 import type { RuntimeClient } from "./manager.ts";
 
@@ -101,7 +101,8 @@ export function createRuntimeHost(client: RuntimeClient, socketPath: string): ht
         );
         sendJson(res, 200, { ok: true, result: result ?? null });
       } catch (e) {
-        sendJson(res, 200, { ok: false, error: errorMessage(e) });
+        const code = errorCode(e);
+        sendJson(res, 200, { ok: false, error: errorMessage(e), ...(code ? { code } : {}) });
       }
     });
   });
@@ -125,9 +126,13 @@ export function makeRuntimeHttpClient(socketPath: string): BoundedRuntimeClient 
           res.on("data", (c) => (body += c));
           res.on("end", () => {
             try {
-              const j = JSON.parse(body) as { ok: boolean; result?: unknown; error?: string };
+              const j = JSON.parse(body) as { ok: boolean; result?: unknown; error?: string; code?: string };
               if (j.ok) resolve(j.result);
-              else reject(new Error(j.error || `runtime rpc failed (HTTP ${res.statusCode})`));
+              else {
+                const err = new Error(j.error || `runtime rpc failed (HTTP ${res.statusCode})`);
+                if (typeof j.code === "string") (err as { code?: string }).code = j.code;
+                reject(err);
+              }
             } catch (e) {
               reject(toError(e));
             }

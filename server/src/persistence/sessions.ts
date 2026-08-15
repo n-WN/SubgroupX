@@ -13,7 +13,6 @@ import type {
   AgentTurnStatus,
   SandboxMode,
   SandboxKind,
-  SessionMode,
   ApprovalPolicy,
   SessionStatus,
   ThinkingLevel,
@@ -91,7 +90,8 @@ export interface SessionRow {
   sandbox_id: string | null;
   sandbox_target_id: string | null;
   e2b_snapshot_id: string | null;
-  mode: SessionMode;
+  mode: string;
+  skill_prompt: string | null;
   approval_policy: ApprovalPolicy;
   status: SessionStatus;
   thinking_level: ThinkingLevel;
@@ -134,7 +134,7 @@ const SESSION_TITLE_SCAN_MAX_CODE_UNITS = 2_048;
 const SESSION_SELECT_COLUMNS = `
   id, user_id, substr(title, 1, ${SESSION_TITLE_MAX_CHARS}) AS title,
   provider, model, sandbox_mode, sandbox_kind, sandbox_id, sandbox_target_id,
-  e2b_snapshot_id, mode, approval_policy, status, thinking_level, cwd,
+  e2b_snapshot_id, mode, skill_prompt, approval_policy, status, thinking_level, cwd,
   created_at, updated_at, connector_unconfined, approved_tools,
   team_provision_team_id, team_provision_reservation_id, team_provision_state`;
 
@@ -270,10 +270,10 @@ export const sessionDao = {
     db.prepare(
       `INSERT INTO sessions
          (id, user_id, title, provider, model, sandbox_mode, sandbox_kind, sandbox_id,
-          sandbox_target_id, mode, approval_policy, status, cwd,
+          sandbox_target_id, mode, skill_prompt, approval_policy, status, cwd,
           team_provision_team_id, team_provision_reservation_id, team_provision_state,
           created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       row.id,
       row.user_id,
@@ -285,6 +285,7 @@ export const sessionDao = {
       row.sandbox_id,
       row.sandbox_target_id,
       row.mode,
+      row.skill_prompt ?? null,
       row.approval_policy,
       row.status,
       row.cwd,

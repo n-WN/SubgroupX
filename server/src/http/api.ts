@@ -5,6 +5,7 @@ import { registerAccountRoutes } from "./routes/account.ts";
 import { registerAdminRoutes } from "./routes/admin.ts";
 import { registerShareRoutes } from "./routes/share.ts";
 import { registerSessionRoutes } from "./routes/sessions.ts";
+import { registerSkillRoutes } from "./routes/skills.ts";
 import { registerAutomationRoutes } from "./routes/automations.ts";
 import { registerFileRoutes } from "./routes/files.ts";
 import { registerOrchestrationRoutes } from "./routes/orchestration.ts";
@@ -19,6 +20,7 @@ export function createApiRouter(): express.Router {
   registerAdminRoutes(r);
   registerShareRoutes(r);
   registerSessionRoutes(r);
+  registerSkillRoutes(r);
   registerOrchestrationRoutes(r);
   registerAutomationRoutes(r);
   registerFileRoutes(r);

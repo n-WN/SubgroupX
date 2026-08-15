@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 import { errorMessage, classifyError } from "../foundation/errors.ts";
-import { readFileSync } from "node:fs";
 import { executionDenial, runtimeExecutionDenial } from "../identity/access-gate.ts";
+import { skillRegistry } from "./skill-registry.ts";
+import { loadPrompt } from "./prompt-loader.ts";
 import { Agent, type AgentEvent, type AgentMessage } from "@earendil-works/pi-agent-core";
 import { shouldCompact, generateSummary, DEFAULT_COMPACTION_SETTINGS } from "@earendil-works/pi-coding-agent";
 import { countText, countTextHard, countMessage, countMessageHard, warmupTokenizer } from "./token-count.ts";
@@ -32,7 +33,6 @@ import type {
   PermissionRequestPayload,
   AgentTurnStatus,
   SessionStatus,
-  SessionMode,
   ShellResult,
   ToolCallStatus,
   ToolKind,
@@ -162,10 +162,6 @@ function samePendingSnapshot(left: readonly PendingMessage[], right: readonly Pe
 
 const TERMINAL_TOOL_STATUSES = new Set<ToolCallStatus>(["success", "error", "denied"]);
 
-function loadPrompt(name: string): string {
-  return readFileSync(new URL(`./prompts/${name}.md`, import.meta.url), "utf8").trim();
-}
-
 function rawErrorText(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e ?? "");
   return raw.length > 2000 ? raw.slice(0, 2000) + "…" : raw;
@@ -184,41 +180,37 @@ const ERROR_UI_MESSAGES: Record<string, string> = {
   server: "The model provider returned a server error (5xx). It's likely transient — try again shortly.",
 };
 
-const SYSTEM_PROMPT = loadPrompt("coding");
 const SUBAGENT_PROMPT = loadPrompt("subagent");
 const WORKFLOW_CONTROLLER_PROMPT = loadPrompt("workflow-controller");
-const PENTEST_PROMPT = loadPrompt("pentest");
-const EXPLOIT_PROMPT = loadPrompt("exploit");
-const BOLD_PROMPT = loadPrompt("bold");
-
-let CTF_CONTRACT = "";
-try {
-  CTF_CONTRACT = loadPrompt("ctf-contract");
-} catch {
-  CTF_CONTRACT = "";
-}
-
-function systemPromptFor(mode: SessionMode): string {
-  if (mode === "pentest") return CTF_CONTRACT ? `${PENTEST_PROMPT}\n\n---\n\n${CTF_CONTRACT}` : PENTEST_PROMPT;
-  if (mode === "exploit") return CTF_CONTRACT ? `${EXPLOIT_PROMPT}\n\n---\n\n${CTF_CONTRACT}` : EXPLOIT_PROMPT;
-  if (mode === "bold") return BOLD_PROMPT;
-  return SYSTEM_PROMPT;
-}
-
 const SELF_TRAJECTORY_PROMPT = loadPrompt("self-trajectory");
 const WORKSPACE_LINKS_PROMPT = loadPrompt("workspace-links");
 const DIAGRAMS_PROMPT = loadPrompt("diagrams");
 const AGENT_ROSTER_PROMPT = loadPrompt("agent-roster");
 
-function composeSystemPrompt(mode: SessionMode, trajectoryUrl: string | null): string {
-  const base = `${systemPromptFor(mode)}\n\n---\n\n${WORKSPACE_LINKS_PROMPT}\n\n---\n\n${DIAGRAMS_PROMPT}\n\n---\n\n${AGENT_ROSTER_PROMPT}`;
-  if (!trajectoryUrl) return base;
-  return `${base}\n\n---\n\n${SELF_TRAJECTORY_PROMPT.replaceAll("{{TRAJECTORY_URL}}", trajectoryUrl)}`;
+export class InvalidStoredSkillError extends Error {
+  readonly code = "invalid_stored_skill";
+  constructor(sessionId: string, mode: string) {
+    super(`session ${sessionId} has an unresolvable stored mode: ${mode}`);
+    this.name = "InvalidStoredSkillError";
+  }
+}
+
+function composeSystemPrompt(base: string, trajectoryUrl: string | null): string {
+  const full = `${base}\n\n---\n\n${WORKSPACE_LINKS_PROMPT}\n\n---\n\n${DIAGRAMS_PROMPT}\n\n---\n\n${AGENT_ROSTER_PROMPT}`;
+  if (!trajectoryUrl) return full;
+  return `${full}\n\n---\n\n${SELF_TRAJECTORY_PROMPT.replaceAll("{{TRAJECTORY_URL}}", trajectoryUrl)}`;
 }
 
 function selfTrajectoryUrl(sessionId: string): string | null {
   const token = sessionDao.selfToken(sessionId);
   return token ? `${publicOriginFor("https", undefined)}/api/self/${token}/trajectory` : null;
+}
+
+function resolveStoredBasePrompt(row: SessionRow): string {
+  if (row.skill_prompt !== null) return row.skill_prompt;
+  const spec = skillRegistry.resolveBuiltin(row.mode);
+  if (!spec) throw new InvalidStoredSkillError(row.id, row.mode);
+  return skillRegistry.basePrompt(spec);
 }
 
 const TIME_OPEN = "\n\n⁠<oiia-now>";
@@ -428,6 +420,7 @@ export class AgentSessionRuntime {
   private turnAcceptingSteer = false;
 
   constructor(row: SessionRow, options: AgentSessionRuntimeOptions = {}) {
+    const base = resolveStoredBasePrompt(row);
     if (row.status === "running" || agentTurnDao.latestInProgress(row.id)) recoverInterruptedSession(row.id);
     this.row = row;
     this.runtimeOptions = options;
@@ -508,7 +501,7 @@ export class AgentSessionRuntime {
     const getKey = apiKeyResolver(row.user_id);
     this.getKey = getKey;
 
-    this.systemPrompt = composeSystemPrompt(row.mode, selfTrajectoryUrl(row.id));
+    this.systemPrompt = composeSystemPrompt(base, selfTrajectoryUrl(row.id));
     this.effectiveSystemPrompt = this.systemPrompt;
 
     this.agent = new Agent({

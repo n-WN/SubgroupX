@@ -1,8 +1,9 @@
 import type express from "express";
 import { connectorDao, sshTargetDao, compactionDao } from "../../persistence/index.ts";
 import { boundedRuntimeClient } from "../../runtime/runtime-client.ts";
+import { errorCode } from "../../foundation/errors.ts";
 import { getAuditRequestId, logAudit } from "../../observability/audit-log.ts";
-import { isThinkingLevel, type SandboxMode, type SandboxKind, type SessionMode, type ApprovalPolicy } from "../../../../shared/src/protocol.ts";
+import { isThinkingLevel, type SandboxMode, type SandboxKind, type ApprovalPolicy } from "../../../../shared/src/protocol.ts";
 import {
   type AuthedRequest,
   requireAuth,
@@ -24,9 +25,13 @@ export function registerSessionRoutes(r: express.Router): void {
         res.status(400).json({ error: "provider and model are required" });
         return;
       }
+      if (mode !== undefined && mode !== null && typeof mode !== "string") {
+        res.status(400).json({ error: "mode must be a string" });
+        return;
+      }
       const sm: SandboxMode = SANDBOX_MODES.includes(sandboxMode) ? sandboxMode : "danger-full-access";
       const ap: ApprovalPolicy = APPROVAL_POLICIES.includes(approvalPolicy) ? approvalPolicy : "never";
-      const md: SessionMode = mode === "pentest" || mode === "exploit" || mode === "bold" ? mode : "coding";
+      const md: string | undefined = mode == null ? undefined : mode;
       const connector =
         typeof sandboxTargetId === "string" ? connectorDao.byId(req.user!.id, sandboxTargetId) : undefined;
       const sshTarget =
@@ -69,6 +74,10 @@ export function registerSessionRoutes(r: express.Router): void {
       });
       res.json({ session: info });
     } catch (e) {
+      if (errorCode(e) === "invalid_skill") {
+        res.status(400).json({ error: "unknown skill" });
+        return;
+      }
       logAudit("session_create_failed", { level: "warn", requestId: getAuditRequestId(req), userId: req.user!.id, data: { reason: e instanceof Error ? e.message : "create failed" } });
       res.status(400).json({ error: e instanceof Error ? e.message : "create failed" });
     }

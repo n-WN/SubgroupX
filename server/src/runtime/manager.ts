@@ -16,7 +16,8 @@ import { workspacePathFor } from "./sandbox.ts";
 import { connectorManager, type ConnectorExecParams } from "./connector-manager.ts";
 import { evalEgress } from "./proxy-env.ts";
 import { resolveModel, listModelsForProviders } from "./providers.ts";
-import { AgentSessionRuntime } from "./agent-session.ts";
+import { AgentSessionRuntime, InvalidStoredSkillError } from "./agent-session.ts";
+import { skillRegistry } from "./skill-registry.ts";
 import { executionDenial } from "../identity/access-gate.ts";
 import {
   RuntimeTaskPermitPool,
@@ -34,7 +35,6 @@ import type {
   SessionInfo,
   SandboxMode,
   SandboxKind,
-  SessionMode,
   ApprovalPolicy,
   ThinkingLevel,
   ServerEvent,
@@ -61,6 +61,14 @@ import {
 import type { ReservedTeamSessionClaim } from "../orchestration/team-coordinator.ts";
 import { TeamCommandService } from "../orchestration/team-command-service.ts";
 
+export class InvalidSkillError extends Error {
+  readonly code = "invalid_skill";
+  constructor(skill: string) {
+    super(`unknown skill: ${skill}`);
+    this.name = "InvalidSkillError";
+  }
+}
+
 export interface CreateSessionInput {
   title?: string;
   provider: string;
@@ -68,9 +76,15 @@ export interface CreateSessionInput {
   sandboxMode: SandboxMode;
   sandboxKind?: SandboxKind;
   sandboxTargetId?: string | null;
-  mode?: SessionMode;
+  mode?: string;
   approvalPolicy: ApprovalPolicy;
   connectorUnconfined?: boolean;
+}
+
+interface Persona {
+  mode: string;
+  skillPrompt: string | null;
+  securityMode: boolean;
 }
 
 export interface RuntimeResolutionProfile {
@@ -550,7 +564,27 @@ export class SessionManager {
     return currentExecutorAvailability();
   }
 
-  createSession(user: AuthedUser, input: CreateSessionInput, teamClaim?: ReservedTeamSessionClaim): SessionInfo {
+  private resolvePersona(userId: string, mode: string | undefined): Persona {
+    if (mode == null) return { mode: "coding", skillPrompt: null, securityMode: false };
+    const spec = skillRegistry.resolve(userId, mode);
+    if (!spec) throw new InvalidSkillError(mode);
+    return {
+      mode: spec.id,
+      skillPrompt: spec.source === "user" ? skillRegistry.basePrompt(spec) : null,
+      securityMode: spec.isSecurity,
+    };
+  }
+
+  createSession(user: AuthedUser, input: CreateSessionInput): SessionInfo {
+    return this.createSessionForPersona(user, input, this.resolvePersona(user.id, input.mode));
+  }
+
+  private createSessionForPersona(
+    user: AuthedUser,
+    input: CreateSessionInput,
+    persona: Persona,
+    teamClaim?: ReservedTeamSessionClaim,
+  ): SessionInfo {
     resolveModel(input.provider, input.model);
 
     const activeClaim = () => Boolean(teamClaim && teamDao.isActiveMemberProvisionClaim({
@@ -580,9 +614,7 @@ export class SessionManager {
       return rowToInfo(existing);
     }
     const now = Date.now();
-    const mode: SessionMode =
-      input.mode === "pentest" || input.mode === "exploit" || input.mode === "bold" ? input.mode : "coding";
-    const securityMode = mode === "pentest" || mode === "exploit";
+    const { mode, skillPrompt, securityMode } = persona;
     const executors = currentExecutorAvailability();
     let sandboxKind: SandboxKind =
       input.sandboxKind === "e2b"
@@ -619,6 +651,7 @@ export class SessionManager {
       sandbox_target_id: input.sandboxTargetId ?? null,
       e2b_snapshot_id: null,
       mode,
+      skill_prompt: skillPrompt,
       approval_policy: input.approvalPolicy,
       status: "idle",
       thinking_level: "medium",
@@ -778,19 +811,28 @@ export class SessionManager {
     const owner = userDao.byId(userId);
     if (!actor || actor.user_id !== userId || !owner) throw new Error("Owned actor Session was not found");
     if (this.draining) throw new Error("The server is restarting");
-    return this.createSession({ id: userId, email: owner.email }, {
+    // Inherit the actor's frozen snapshot rather than re-resolving its mode, so editing or
+    // deleting the actor's skill can neither break provisioning nor diverge the member.
+    let persona: Persona;
+    if (actor.skill_prompt !== null) {
+      persona = { mode: actor.mode, skillPrompt: actor.skill_prompt, securityMode: false };
+    } else {
+      const builtin = skillRegistry.resolveBuiltin(actor.mode);
+      if (!builtin) throw new InvalidStoredSkillError(actor.id, actor.mode);
+      persona = { mode: builtin.id, skillPrompt: null, securityMode: builtin.isSecurity };
+    }
+    return this.createSessionForPersona({ id: userId, email: owner.email }, {
       title: title.trim().slice(0, 120) || "Team member",
       provider: actor.provider,
       model: actor.model,
       sandboxMode: actor.sandbox_mode,
       sandboxKind: actor.sandbox_kind,
       sandboxTargetId: actor.sandbox_target_id,
-      mode: actor.mode,
       approvalPolicy: actor.approval_policy,
       ...(actor.sandbox_kind === "connector" && actor.connector_unconfined != null
         ? { connectorUnconfined: actor.connector_unconfined === 1 }
         : {}),
-    }, claim);
+    }, persona, claim);
   }
 
   getRuntimeProfiled(userId: string, sessionId: string): RuntimeResolutionProfile {

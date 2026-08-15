@@ -2,6 +2,12 @@ export function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+export function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null && typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code
+    : undefined;
+}
+
 export function classifyError(e: unknown): { errorKind: string; retryable: boolean } {
   const s = errorMessage(e).toLowerCase();
   if (s.includes("insufficient_quota") || s.includes("billing hard limit") || s.includes("quota exceeded")) return { errorKind: "quota", retryable: false };

@@ -118,6 +118,8 @@ export interface ModelInfo {
   contextWindow: number;
   mock?: boolean;
   thinkingLevels?: ThinkingLevel[];
+  /** Input modalities the provider's catalog explicitly declares; absent means text-only. */
+  inputModalities?: Array<"text" | "image" | "audio" | "video">;
 }
 
 export const OPERATOR_MODEL_PROVIDER = "0AI-jail" as const;

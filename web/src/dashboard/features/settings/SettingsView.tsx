@@ -6,6 +6,7 @@ import { api } from '../../../platform/api.ts';
 import { useI18n } from '../../../i18n';
 import type { ProviderKeyInfo } from '@shared/protocol';
 import type { ToolFoldMode } from '../../session/timeline/timeline-helpers';
+import { OrcaRouterPanel } from './OrcaRouterPanel';
 
 type EgressState = {
   jumpServer: string;
@@ -544,7 +545,7 @@ export function SettingsView({
           <div className="text-[13px] text-[#888] dark:text-[#888] break-all">{userEmail}</div>
 
           <div className="space-y-3">
-            {providers.map((provider) => {
+            {providers.filter((provider) => provider !== 'orcarouter').map((provider) => {
               const existing = keys.find((key) => key.provider === provider);
               return (
                 <div
@@ -595,6 +596,8 @@ export function SettingsView({
             })}
           </div>
         </section>
+
+        <OrcaRouterPanel onChanged={() => { void load(); onProvidersChanged?.(); }} />
 
       </div>
       </div>

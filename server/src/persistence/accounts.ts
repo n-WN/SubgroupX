@@ -262,6 +262,50 @@ export const keyDao = {
   },
 };
 
+export interface OrcaCredentialRow {
+  user_id: string;
+  source: string;
+  scope: string | null;
+  generation: number;
+  needs_reauth: number;
+  updated_at: number;
+}
+
+/**
+ * Credential metadata for the OrcaRouter provider: which adapter produced the stored
+ * key, its generation, and whether a relay 401 marked it for reauthentication. The
+ * secret itself stays in `provider_keys`.
+ */
+export const orcaCredentialDao = {
+  get(userId: string): OrcaCredentialRow | undefined {
+    return db
+      .prepare("SELECT * FROM orca_credentials WHERE user_id = ?")
+      .get(userId) as OrcaCredentialRow | undefined;
+  },
+  rotate(userId: string, source: string, scope: string | null): number {
+    const current = orcaCredentialDao.get(userId);
+    const generation = (current?.generation ?? 0) + 1;
+    db.prepare(
+      `INSERT INTO orca_credentials (user_id, source, scope, generation, needs_reauth, updated_at)
+       VALUES (?, ?, ?, ?, 0, ?)
+       ON CONFLICT(user_id) DO UPDATE SET source=excluded.source, scope=excluded.scope,
+         generation=excluded.generation, needs_reauth=0, updated_at=excluded.updated_at`,
+    ).run(userId, source, scope, generation, Date.now());
+    return generation;
+  },
+  markNeedsReauth(userId: string, generation: number): boolean {
+    // Only the exact rejected generation flips: a late failure from an old request
+    // must never poison a credential that was just reauthorized.
+    const out = db
+      .prepare("UPDATE orca_credentials SET needs_reauth = 1 WHERE user_id = ? AND generation = ?")
+      .run(userId, generation);
+    return Number(out.changes) > 0;
+  },
+  clear(userId: string): void {
+    db.prepare("DELETE FROM orca_credentials WHERE user_id = ?").run(userId);
+  },
+};
+
 export interface SshTargetRow {
   id: string;
   user_id: string;

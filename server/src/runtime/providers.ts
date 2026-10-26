@@ -15,6 +15,7 @@ import { isThinkingLevel, OPERATOR_MODEL_PROVIDER, THINKING_LEVELS, type ModelIn
 import { keyDao } from "../persistence/index.ts";
 import { decryptKey } from "../identity/auth.ts";
 import { PRODUCT_NAME } from "../config.ts";
+import { ORCAROUTER_PROVIDER, orcaCatalogSnapshot, toOrcaModel, toOrcaModelInfo } from "./orcarouter.ts";
 
 const BASE_THINKING_LEVELS: ThinkingLevel[] = ["low", "medium", "high"];
 
@@ -557,6 +558,7 @@ const KNOWN_PROVIDERS = [
   "mistral",
   "openrouter",
   "kimi-coding",
+  "orcarouter",
 ] as const;
 
 export function knownProviders(): string[] {
@@ -663,6 +665,12 @@ export function listModelsForProviders(providersWithKeys: string[]): ModelInfo[]
   out.push(toModelInfo(mockModel, true));
   for (const provider of providersWithKeys) {
     if (!KNOWN_PROVIDERS.includes(provider as any)) continue;
+    if (provider === ORCAROUTER_PROVIDER) {
+      // OrcaRouter rows come from its own catalog, not from pi's bundled registry:
+      // the seed is replaced outright by a live discovery response.
+      for (const row of orcaCatalogSnapshot().models) out.push(toOrcaModelInfo(row));
+      continue;
+    }
     try {
       const models = getModels(provider as any);
       const cap = provider === "openrouter" ? 80 : Infinity;
@@ -676,6 +684,11 @@ export function listModelsForProviders(providersWithKeys: string[]): ModelInfo[]
 export function resolveModel(provider: string, modelId: string): Model<any> {
   if (provider === MOCK_PROVIDER) return mockModel;
   if (provider === JAIL_PROVIDER) return JAIL_MODELS.find((m) => m.id === modelId) ?? JAIL_MODELS[0];
+  if (provider === ORCAROUTER_PROVIDER) {
+    const row = orcaCatalogSnapshot().models.find((m) => m.id === modelId);
+    if (!row) throw new Error(`unknown OrcaRouter model: ${modelId}`);
+    return toOrcaModel(row);
+  }
   return getModel(provider as any, modelId as any);
 }
 

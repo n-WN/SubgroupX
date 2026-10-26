@@ -15,6 +15,7 @@ import { Composer, type Attachment } from './composer/Composer';
 import { closeComposerPopoverGroup } from './composer/useHoverPopover';
 import { observeTimelineToolTiming, observeToolTimingEvent } from './tools/tool-running-clock';
 import { pastedTextFilename } from './composer/pasted-text';
+import { modelsForDraft, modelStillCompatible } from '../../platform/model-capabilities';
 import { Timeline } from './timeline/Timeline';
 import type { ToolFoldMode } from './timeline/timeline-helpers';
 import { type ContextUsage } from './composer/composer-widgets';
@@ -977,6 +978,26 @@ export const MainContent = memo(function MainContent({
     return null;
   };
 
+  // The selector's options follow the draft: an image attachment drops every model
+  // whose catalog record does not declare image input, so an incompatible model can
+  // never be chosen — and a stale choice is cleared instead of silently kept.
+  const composerModels = useMemo(() => modelsForDraft(models ?? [], attachments), [models, attachments]);
+  const currentModelInfo = useMemo(
+    () => (models ?? []).find((m) => m.provider === session.provider && m.id === session.model),
+    [models, session.provider, session.model],
+  );
+  const modelClearedForAttachments = useMemo(() => {
+    if (currentModelInfo && !modelStillCompatible(currentModelInfo, attachments)) return true;
+    if (!currentModelInfo) return false;
+    return !composerModels.some((m) => m.provider === currentModelInfo.provider && m.id === currentModelInfo.id);
+  }, [currentModelInfo, attachments, composerModels]);
+  useEffect(() => {
+    if (!modelClearedForAttachments) return;
+    const fallback = composerModels.find((m) => !m.mock);
+    if (fallback && onSetModel) onSetModel(session.id, fallback.provider, fallback.id);
+    setAttachError(t('chat.modelIncompatible', { model: currentModelInfo?.name ?? session.model }));
+  }, [modelClearedForAttachments, composerModels, onSetModel, session.id, session.model, currentModelInfo, t]);
+
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1279,7 +1300,7 @@ export const MainContent = memo(function MainContent({
         contextUsage={contextUsage}
         onSetThinkingLevel={onSetThinkingLevel}
         onSetApprovalPolicy={onSetApprovalPolicy}
-        models={models}
+        models={composerModels}
         onSetModel={onSetModel}
       />
     </div>

@@ -95,6 +95,43 @@ export interface ModelsResponse {
   executors?: ExecutorAvailability;
 }
 
+export interface OrcaCredentialState {
+  configured: boolean;
+  hint: string | null;
+  source: "api_key" | "oauth_pkce" | null;
+  needsReauth: boolean;
+  generation: number;
+}
+
+export interface OrcaProviderInfo {
+  provider: string;
+  label: string;
+  keyPrefix: string;
+  apiBase: string;
+  authBase: string;
+  defaults: { apiBase: string; authBase: string };
+  dashboardUrl: string;
+  providerUrl: string;
+  cyberCatalogUrl: string;
+  authMethods: Array<"api_key" | "oauth_pkce">;
+  credential: OrcaCredentialState;
+}
+
+export interface OrcaModelCatalog {
+  provider: string;
+  modality: "text" | "image";
+  source: "live" | "verified_seed";
+  degraded: boolean;
+  catalogUrl: string;
+  models: Array<{
+    id: string;
+    name: string;
+    contextWindow: number;
+    inputModalities: Array<"text" | "image" | "audio" | "video">;
+    reasoning: boolean;
+  }>;
+}
+
 export interface SshTargetInfo {
   id: string;
   label: string;
@@ -264,6 +301,36 @@ export const api = {
   setKey: (provider: string, key: string) => req<{ ok: boolean }>("PUT", `/providers/${provider}/key`, { key }),
   deleteKey: (provider: string) => req<{ ok: boolean }>("DELETE", `/providers/${provider}/key`),
   models: () => req<ModelsResponse>("GET", "/models"),
+
+  orcaProvider: () => req<OrcaProviderInfo>("GET", "/providers/orcarouter"),
+  orcaModels: (modality: "text" | "image" = "text") =>
+    req<OrcaModelCatalog>("GET", `/providers/orcarouter/models?modality=${modality}`),
+  orcaSaveKey: (key: string) =>
+    req<{ ok: boolean; hint: string; generation: number; source: "api_key" }>("PUT", "/providers/orcarouter/key", { key }),
+  orcaClearKey: () => req<{ ok: boolean }>("DELETE", "/providers/orcarouter/key"),
+  orcaLoginStart: () =>
+    req<{ ok: boolean; attemptId: string; url: string; expiresAt: number }>("POST", "/providers/orcarouter/login/start", {}),
+  orcaLoginComplete: (attemptId: string, code: string) =>
+    req<{ ok: boolean; hint: string; scope: string; generation: number; source: "oauth_pkce" }>(
+      "POST",
+      "/providers/orcarouter/login/complete",
+      { attemptId, code },
+    ),
+  orcaLoginCancel: (attemptId: string) =>
+    req<{ ok: boolean; cancelled: boolean }>("POST", "/providers/orcarouter/login/cancel", { attemptId }),
+  /** Fire-and-forget cancel that survives the page being hidden or torn down. */
+  orcaLoginCancelKeepalive: (attemptId: string) => {
+    const token = getToken();
+    void fetch("/api/providers/orcarouter/login/cancel", {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "content-type": "application/json",
+        ...(token ? { authorization: "Bearer " + token } : {}),
+      },
+      body: JSON.stringify({ attemptId }),
+    }).catch(() => {});
+  },
 
   memory: () => req<{ enabled: boolean; state: string; userNotes: string; lastDreamedAt: number | null }>("GET", "/settings/memory"),
   setMemory: (patch: { enabled?: boolean; userNotes?: string }) =>

@@ -1,13 +1,14 @@
 import crypto from "node:crypto";
 import type express from "express";
 import { errorMessage } from "../../foundation/errors.ts";
-import { encryptKey, verifyToken } from "../../identity/auth.ts";
+import { decryptKey, encryptKey, verifyToken } from "../../identity/auth.ts";
 import { connectorDao, keyDao, userDao, sshTargetDao, userMemoryDao, webauthnCredentialDao } from "../../persistence/index.ts";
 import { isInternalIp, resolveSafeSshHost } from "../../runtime/ssh-guard.ts";
 import { SSHSandbox } from "../../runtime/ssh-sandbox.ts";
 import { unlockKey, lockKey, isUnlocked, resolveSshPrivateKey, SshUnlockRequiredError } from "../../runtime/ssh-unlock.ts";
 import { boundedRuntimeClient } from "../../runtime/runtime-client.ts";
 import { knownProviders, listModelsForProviders } from "../../runtime/providers.ts";
+import { ORCAROUTER_PROVIDER, fetchOrcaCatalog } from "../../runtime/orcarouter.ts";
 import { searchSessions } from "../../sessions/search.ts";
 import { getAuditRequestId, hashForAudit, logAudit } from "../../observability/audit-log.ts";
 import { executionDenial } from "../../identity/access-gate.ts";
@@ -146,6 +147,18 @@ export function registerAccountRoutes(r: express.Router): void {
 
   r.get("/models", requireAuth, async (req: AuthedRequest, res) => {
     const providersWithKeys = keyDao.list(req.user!.id).map((k) => k.provider);
+    if (providersWithKeys.includes(ORCAROUTER_PROVIDER)) {
+      // Refresh the OrcaRouter catalog before listing so the dropdown reflects the
+      // live directory; discovery itself falls back to the verified seed on failure.
+      let key: string | undefined;
+      try {
+        const row = keyDao.get(req.user!.id, ORCAROUTER_PROVIDER);
+        key = row ? decryptKey(row.enc_key) : undefined;
+      } catch {
+        key = undefined;
+      }
+      await fetchOrcaCatalog(key);
+    }
     const executors = await boundedRuntimeClient.getExecutorAvailability();
     res.json({ models: listModelsForProviders(providersWithKeys), e2b: executors.e2b.available, executors });
   });

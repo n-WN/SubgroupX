@@ -87,6 +87,8 @@ import {
 } from "./tools.ts";
 import { builtinToolSource, mcpToolSource, composeTools, type ToolSource } from "./tool-sources.ts";
 import { resolveModel, apiKeyResolver, effectiveThinkingLevel, MOCK_PROVIDER } from "./providers.ts";
+import { ORCAROUTER_PROVIDER } from "./orcarouter.ts";
+import { markOrcaNeedsReauth, orcaCredentialGeneration } from "./orcarouter-auth.ts";
 import { userMemoryPromptBlock } from "./memory-dreaming.ts";
 import { mcpServersFromEnv, CAPTURE_RAW, publicOriginFor } from "../config.ts";
 import { errorKind, logAudit } from "../observability/audit-log.ts";
@@ -4399,7 +4401,7 @@ ${memoryBlock}`
             });
           }
           if (m.stopReason === "error" || m.stopReason === "aborted") {
-            const desc = m.stopReason === "aborted"
+            let desc = m.stopReason === "aborted"
               ? { message: "Interrupted.", errorKind: "aborted" as string, retryable: false }
               : this.describeError(m.errorMessage || "the model returned an error");
             this.terminalizeUndispatchedTools(
@@ -4409,6 +4411,16 @@ ${memoryBlock}`
                 : "The model response failed before this tool could run.",
             );
             if (m.stopReason === "error") {
+              if (desc.errorKind === "auth" && this.model.provider === ORCAROUTER_PROVIDER) {
+                // A relay 401 on a durable key is terminal: there is no refresh grant,
+                // so mark exactly this credential generation for reauthentication.
+                markOrcaNeedsReauth(this.row.user_id, orcaCredentialGeneration(this.row.user_id));
+                desc = {
+                  message: "Your OrcaRouter credential was rejected — reconnect OrcaRouter in Settings, or paste a new API key. The stored key is kept until a new one is saved.",
+                  errorKind: "auth",
+                  retryable: false,
+                };
+              }
               logAudit("turn_error", {
                 level: "error",
                 userId: this.row.user_id,

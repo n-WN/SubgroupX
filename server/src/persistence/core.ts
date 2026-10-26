@@ -47,6 +47,16 @@ CREATE TABLE IF NOT EXISTS provider_keys (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS orca_credentials (
+  user_id     TEXT PRIMARY KEY,
+  source      TEXT NOT NULL CHECK (source IN ('api_key','oauth_pkce')),
+  scope       TEXT,
+  generation  INTEGER NOT NULL DEFAULT 1,
+  needs_reauth INTEGER NOT NULL DEFAULT 0,
+  updated_at  INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
   id              TEXT PRIMARY KEY,
   user_id         TEXT NOT NULL,
